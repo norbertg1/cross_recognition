@@ -1,0 +1,1 @@
+/home/norbi/Asztal/object_recognition_c++/build/CMakeFiles/main.dir
