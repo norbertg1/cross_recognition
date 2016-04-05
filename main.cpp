@@ -23,17 +23,18 @@ int main( int argc, char** argv )
 	if( argc != 3 )		{ readme(); return -1; }
 
 	
-	VideoCapture cap(0);
+	VideoCapture cap(1);
 //	cap.set(CV_CAP_PROP_FRAME_WIDTH,320);
 //	cap.set(CV_CAP_PROP_FRAME_HEIGHT,240); 
 
+	
 
 while(1){
 	Mat imgOriginal;
 	bool bSuccess = cap.read(imgOriginal);
 
 	cv::cvtColor(imgOriginal, imgOriginal, cv::COLOR_BGR2GRAY);
-	std::cout << "debug " << std::endl;	
+
 	if (!bSuccess) //if not success, break loop
         {
              printf("read error");
@@ -118,7 +119,7 @@ printf(" %d\n", descriptors_object.rows);
                vector<char>(), DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS );
 	if(cnt_matches<8) {
 		imshow( "Good Matches & Object detection", img_matches );
-  		imshow( "test", img_scene );
+  		//imshow( "test", img_scene );
 		
 	}
 else{
@@ -147,10 +148,10 @@ if(cnt_matches>4) H = findHomography( obj, scene, CV_RANSAC );
   perspectiveTransform( obj_corners, scene_corners, H);
 
   //-- Draw lines between the corners (the mapped object in the scene - image_2 )
-//  line( img_matches, scene_corners[0] + Point2f( img_object.cols, 0), scene_corners[1] + Point2f( img_object.cols, 0), Scalar(0, 0, 230), 4 );
-//  line( img_matches, scene_corners[1] + Point2f( img_object.cols, 0), scene_corners[2] + Point2f( img_object.cols, 0), Scalar( 0, 255, 0), 4 );
-//  line( img_matches, scene_corners[2] + Point2f( img_object.cols, 0), scene_corners[3] + Point2f( img_object.cols, 0), Scalar( 50, 255, 0), 4 );
-//  line( img_matches, scene_corners[3] + Point2f( img_object.cols, 0), scene_corners[0] + Point2f( img_object.cols, 0), Scalar( 0, 255, 0), 10 );
+//  line( img_scene, scene_corners[0] + Point2f( img_object.cols, 0), scene_corners[1] + Point2f( img_object.cols, 0), Scalar(0, 0, 230), 4 );
+//  line( img_scene, scene_corners[1] + Point2f( img_object.cols, 0), scene_corners[2] + Point2f( img_object.cols, 0), Scalar( 0, 255, 0), 4 );
+//  line( img_scene, scene_corners[2] + Point2f( img_object.cols, 0), scene_corners[3] + Point2f( img_object.cols, 0), Scalar( 50, 255, 0), 4 );
+//  line( img_scene, scene_corners[3] + Point2f( img_object.cols, 0), scene_corners[0] + Point2f( img_object.cols, 0), Scalar( 0, 255, 0), 10 );
   
   circle( img_matches,								//bal felső és a jobb alsó sarok közé középre egy pont rajzolása
          (scene_corners[0] + scene_corners[2])*.5 + Point2f( img_object.cols, 0), //pont helye
@@ -173,7 +174,7 @@ if(cnt_matches>4) H = findHomography( obj, scene, CV_RANSAC );
          -1,										//-1 egész kör kitöltése, amugy a körív vastagsága
          CV_AA );										//körvonál típusa
 
-  printf("az objektum koordinátái: \n");
+  printf("az objektum koordinátáááái: \n");
   printf("x : %f \n", ((scene_corners[0] + scene_corners[1] + scene_corners[2] + scene_corners[3])*.25).x );
   printf("y : %f \n", ((scene_corners[0] + scene_corners[1] + scene_corners[2] + scene_corners[3])*.25).y );
 
