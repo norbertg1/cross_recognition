@@ -6,6 +6,8 @@
 #include "opencv2/calib3d/calib3d.hpp"
 #include "opencv2/nonfree/nonfree.hpp"
 #include "opencv2/xfeatures2d.hpp"
+#include <unistd.h>
+#include <opencv2/imgproc/imgproc.hpp>
 
 using namespace cv;
 
@@ -14,23 +16,56 @@ void readme();
 /** @function main */
 int main( int argc, char** argv )
 {
-  enum { OK=0, 
-		error_reading_images=1 } 
-	error=OK;
+	enum { OK=0, 
+		error_reading_images=1
+		}	error=OK;
 
-  if( argc != 3 )
-  { readme(); return -1; }
+	if( argc != 3 )		{ readme(); return -1; }
 
-  Mat img_object = imread( argv[1], CV_LOAD_IMAGE_GRAYSCALE );		//amit mekeresek a képben
-  Mat img_scene = imread( argv[2], CV_LOAD_IMAGE_GRAYSCALE );		//amiben keresem az objektumot
+	
+	VideoCapture cap(0);
+//	cap.set(CV_CAP_PROP_FRAME_WIDTH,320);
+//	cap.set(CV_CAP_PROP_FRAME_HEIGHT,240); 
 
-  if( !img_object.data || !img_scene.data )
-  { error=error_reading_images;
-	 printf("error: %d\nSee enumerated values \n", error_reading_images);
-	 return error_reading_images; }
+
+while(1){
+	Mat imgOriginal;
+	bool bSuccess = cap.read(imgOriginal);
+
+	cv::cvtColor(imgOriginal, imgOriginal, cv::COLOR_BGR2GRAY);
+	std::cout << "debug " << std::endl;	
+	if (!bSuccess) //if not success, break loop
+        {
+             printf("read error");
+             break;
+        }
+//	CvMat* prevgray = 0, *image = 0, *gray =0;
+//	CvCapture* capture = cvCreateCameraCapture(1);
+//	IplImage* frame = cvQueryFrame(capture);
+//	image = cvCreateMat(frame->height, frame->width, CV_8UC1);
+//	cvShowImage( "Image", frame );  	
+//	imshow( "test_camera", imgOriginal );
+
+	if (waitKey(30) == 27) //wait for 'esc' key press for 30ms. If 'esc' key is pressed, break loop
+       {
+            std::cout << "esc key is pressed by user" << std::endl;
+            break; 
+       }
+
+  	Mat img_object = imread( argv[1], CV_LOAD_IMAGE_GRAYSCALE );		//amit mekeresek a képben
+  	Mat img_scene = imread( argv[2], CV_LOAD_IMAGE_GRAYSCALE );		//amiben keresem az objektumot
+	Mat imgHSV;
+
+ //	cvtColor(imgOriginal, img_scene, COLOR_BGR2HSV); //Convert the captured frame from BGR to HSV
+	img_scene=imgOriginal;
+  	if( !img_object.data || !img_scene.data ){
+		error=error_reading_images;
+		printf("error: %d\nSee enumerated values \n", error_reading_images);
+		return error_reading_images;
+		}
 
   //-- Step 1: Detect the keypoints using SURF Detector
-  int minHessian = 400;
+  int minHessian = 500;
 
   SurfFeatureDetector detector( minHessian );
   
@@ -66,17 +101,27 @@ int main( int argc, char** argv )
 
   //-- Draw only "good" matches (i.e. whose distance is less than 3*min_dist )
   std::vector< DMatch > good_matches;
-
-  for( int i = 0; i < descriptors_object.rows; i++ )
-  { if( matches[i].distance < 3*min_dist )
-     { good_matches.push_back( matches[i]); }
-  }
+printf(" %d\n", descriptors_object.rows);
+	int cnt_matches=0;
+	for( int i = 0; i < descriptors_object.rows; i++ )
+	  { if( matches[i].distance < 1.2*min_dist )
+	     { good_matches.push_back( matches[i]); cnt_matches++; }
+	  }
+/*	good_matches.push_back( matches[0]);
+	good_matches.push_back( matches[1]);
+	good_matches.push_back( matches[2]);
+	good_matches.push_back( matches[3]);*/
 
   Mat img_matches, img_own;
   drawMatches( img_object, keypoints_object, img_scene, keypoints_scene,
                good_matches, img_matches, Scalar::all(-1), Scalar::all(-1),
                vector<char>(), DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS );
-
+	if(cnt_matches<8) {
+		imshow( "Good Matches & Object detection", img_matches );
+  		imshow( "test", img_scene );
+		
+	}
+else{
   //-- Localize the object
   std::vector<Point2f> obj;
   std::vector<Point2f> scene;
@@ -87,11 +132,14 @@ int main( int argc, char** argv )
     obj.push_back( keypoints_object[ good_matches[i].queryIdx ].pt );
     scene.push_back( keypoints_scene[ good_matches[i].trainIdx ].pt );
   }
+std::cout << "debug 3\n" << std::endl;
 
-  Mat H = findHomography( obj, scene, CV_RANSAC );
-
+	Mat H;
+if(cnt_matches>4) H = findHomography( obj, scene, CV_RANSAC );
+	std::cout << "debug 1\n" << std::endl;
   //-- Get the corners from the image_1 ( the object to be "detected" )
   std::vector<Point2f> obj_corners(4);
+ std::cout << "debug 2\n" << std::endl;
   obj_corners[0] = cvPoint(0,0); obj_corners[1] = cvPoint( img_object.cols, 0 );
   obj_corners[2] = cvPoint( img_object.cols, img_object.rows ); obj_corners[3] = cvPoint( 0, img_object.rows );
   std::vector<Point2f> scene_corners(4);
@@ -132,7 +180,8 @@ int main( int argc, char** argv )
   //-- Show detected matches
   imshow( "Good Matches & Object detection", img_matches );
   imshow( "test", img_scene );
-
+}
+}
   waitKey(0);
   return 0;
   }

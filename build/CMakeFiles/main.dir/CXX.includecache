@@ -23,6 +23,10 @@ opencv2/nonfree/nonfree.hpp
 /home/norbi/Asztal/object_recognition_c++/opencv2/nonfree/nonfree.hpp
 opencv2/xfeatures2d.hpp
 /home/norbi/Asztal/object_recognition_c++/opencv2/xfeatures2d.hpp
+unistd.h
+-
+opencv2/imgproc/imgproc.hpp
+-
 
 /usr/local/include/opencv/cxcore.h
 opencv2/core/core_c.h
@@ -371,6 +375,12 @@ opencv2/highgui.hpp
 /usr/local/include/opencv2/opencv2/highgui.hpp
 opencv2/imgproc/imgproc_c.h
 /usr/local/include/opencv2/opencv2/imgproc/imgproc_c.h
+
+/usr/local/include/opencv2/imgproc/imgproc.hpp
+opencv2/core/core.hpp
+/usr/local/include/opencv2/imgproc/opencv2/core/core.hpp
+opencv2/imgproc/types_c.h
+/usr/local/include/opencv2/imgproc/opencv2/imgproc/types_c.h
 
 /usr/local/include/opencv2/imgproc/imgproc_c.h
 opencv2/imgproc/types_c.h
