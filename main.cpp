@@ -1,13 +1,21 @@
 #include <stdio.h>
+#include "stdlib.h"
 #include <iostream>
+#include <string>
+#include <vector>
+#include <unistd.h>
+
+#include "opencv/cv.h"
 #include "opencv2/core/core.hpp"
+#include "opencv2/xfeatures2d.hpp"
 #include "opencv2/features2d/features2d.hpp"
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/calib3d/calib3d.hpp"
 #include "opencv2/nonfree/nonfree.hpp"
-#include "opencv2/xfeatures2d.hpp"
-#include <unistd.h>
 #include <opencv2/imgproc/imgproc.hpp>
+
+#define intrinsic_path	"/home/norbi/Asztal/gal_norbi/calibration_matrices/mobius_rgb_intrinsic.xml"
+#define	distortion_path	"/home/norbi/Asztal/gal_norbi/calibration_matrices/mobius_rgb_distortion.xml"
 
 using namespace cv;
 
@@ -16,6 +24,10 @@ void readme();
 /** @function main */
 int main( int argc, char** argv )
 {
+	
+	
+
+
 	enum { OK=0, 
 		error_reading_images=1
 		}	error=OK;
@@ -30,9 +42,64 @@ int main( int argc, char** argv )
 	
 
 while(1){
-	Mat imgOriginal;
-	bool bSuccess = cap.read(imgOriginal);
+	Mat img;
+	bool bSuccess = cap.read(img);
+	Mat img_orginal=img;
 
+/*************************************** Undistortion code ***********************************************************************/
+
+	#define crop_on
+	//#define crop_off
+
+	CvMat *intrinsic, *distortion;
+	IplImage *inputImg, *outputImg;
+
+	// Load parameters and image
+	IplImage temp=img;	//convert Mat to IplImage	
+	inputImg = &temp;
+	outputImg = cvCreateImage( cvGetSize( inputImg ), inputImg->depth, 3 );
+	intrinsic = (CvMat*)cvLoad( intrinsic_path );
+	distortion = (CvMat*)cvLoad( distortion_path );
+
+#ifdef	crop_on
+	printf("Crop On");
+	cvUndistort2( inputImg, outputImg, intrinsic, distortion );
+#endif
+#ifdef	crop_off
+	printf("Crop Off");
+	double alpha=1;
+	CvMat *cameraMatrix = cvCreateMat( 3, 3, CV_32FC1 );
+	    IplImage *mapx = cvCreateImage( cvGetSize( inputImg ), IPL_DEPTH_32F, 1 );
+	    IplImage *mapy = cvCreateImage( cvGetSize( inputImg ), IPL_DEPTH_32F, 1 );
+
+	    cvGetOptimalNewCameraMatrix(
+		intrinsic,
+		distortion,
+		cvGetSize( inputImg ),
+		alpha,
+		cameraMatrix,
+		cvGetSize( inputImg )
+	    );
+
+	    cvInitUndistortRectifyMap(
+		intrinsic,
+		distortion,
+		NULL,
+		cameraMatrix,
+		mapx,
+		mapy
+	    );
+
+	    cvRemap( inputImg, outputImg, mapx, mapy );
+#endif
+	img=outputImg;
+	imshow( "Orignal_image", img_orginal );
+	imshow( "Undistorted_image", img );
+	cvWaitKey(10);
+	Mat imgOriginal = img;
+/*}
+while(1){Mat imgOriginal;bool bSuccess = cap.read(imgOriginal);*/
+/********************************************************************************************************************************/
 	cv::cvtColor(imgOriginal, imgOriginal, cv::COLOR_BGR2GRAY);
 
 	if (!bSuccess) //if not success, break loop
@@ -179,8 +246,8 @@ if(cnt_matches>4) H = findHomography( obj, scene, CV_RANSAC );
   printf("y : %f \n", ((scene_corners[0] + scene_corners[1] + scene_corners[2] + scene_corners[3])*.25).y );
 
   //-- Show detected matches
-  imshow( "Good Matches & Object detection", img_matches );
-  imshow( "test", img_scene );
+ // imshow( "Good Matches & Object detection", img_matches );
+  //imshow( "test", img_scene );
 }
 }
   waitKey(0);
