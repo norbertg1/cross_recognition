@@ -14,8 +14,14 @@
 #include "opencv2/nonfree/nonfree.hpp"
 #include <opencv2/imgproc/imgproc.hpp>
 
-#define intrinsic_path	"/home/norbi/Asztal/gal_norbi/calibration_matrices/mobius_rgb_intrinsic.xml"
-#define	distortion_path	"/home/norbi/Asztal/gal_norbi/calibration_matrices/mobius_rgb_distortion.xml"
+#define intrinsic_path	"/home/norbi/Asztal/object_recognition_c++/mobius_calibration_data/get_caloutput_20160413-2__intrinsic.xml"
+#define	distortion_path	"/home/norbi/Asztal/object_recognition_c++/mobius_calibration_data/get_caloutput_20160413-2__distortion.xml"
+
+
+#define LINE_MAX_DISTANCE 50	//In pixels
+#define LINE_MIN_DISTANCE 10	//In pixels
+#define	LINE_MAX_ANGLE	10	//In degrees
+#define LINE_MIN_LENGHT	20	//In pixels
 
 using namespace cv;
 
@@ -25,27 +31,29 @@ void readme();
 int main( int argc, char** argv )
 {
 	
-	
+	uint16_t save_sequence=0;
 
 
 	enum { OK=0, 
 		error_reading_images=1
 		}	error=OK;
 
-	if( argc != 3 )		{ readme(); return -1; }
-
+	if( argc != 2 )		{ readme(); return -1; }
 	
+  	Mat img_find = imread( argv[1]  );		//amit mekeresek a képben
+
 	VideoCapture cap(1);
 //	cap.set(CV_CAP_PROP_FRAME_WIDTH,320);
-//	cap.set(CV_CAP_PROP_FRAME_HEIGHT,240); 
+//	cap.set(CV_CAP_PROP_FRAME_HEIGHT,240);
 
 	
 
 while(1){
 	Mat img;
 	bool bSuccess = cap.read(img);
+	img = imread("/home/norbi/Asztal/object_recognition_c++/build/saved images/webcam_capture_2.jpg", CV_LOAD_IMAGE_COLOR);   // Read the file, comment if use camera
 	Mat img_orginal=img;
-
+	
 /*************************************** Undistortion code ***********************************************************************/
 
 	#define crop_on
@@ -62,11 +70,12 @@ while(1){
 	distortion = (CvMat*)cvLoad( distortion_path );
 
 #ifdef	crop_on
-	printf("Crop On");
+//	printf("Crop On");
 	cvUndistort2( inputImg, outputImg, intrinsic, distortion );
+	img=outputImg;
 #endif
 #ifdef	crop_off
-	printf("Crop Off");
+//	printf("Crop Off");
 	double alpha=1;
 	CvMat *cameraMatrix = cvCreateMat( 3, 3, CV_32FC1 );
 	    IplImage *mapx = cvCreateImage( cvGetSize( inputImg ), IPL_DEPTH_32F, 1 );
@@ -91,15 +100,246 @@ while(1){
 	    );
 
 	    cvRemap( inputImg, outputImg, mapx, mapy );
-#endif
 	img=outputImg;
-	imshow( "Orignal_image", img_orginal );
-	imshow( "Undistorted_image", img );
-	cvWaitKey(10);
-	Mat imgOriginal = img;
-/*}
-while(1){Mat imgOriginal;bool bSuccess = cap.read(imgOriginal);*/
+#endif
 /********************************************************************************************************************************/
+/*************************************** Convert image to gray, binary **********************************************************/
+
+	Mat image_temp,image_temp_gray;
+	image_temp=img;
+	cvtColor(image_temp,image_temp_gray,CV_RGB2GRAY);
+	Mat img_binary = image_temp_gray > 64;			//Itt valtozik binarissa a kep
+	img_binary = ~img_binary;				//negállom a képet
+
+	image_temp=img_find;
+	cvtColor(image_temp,image_temp_gray,CV_RGB2GRAY);
+	Mat img_find_binary = image_temp_gray > 64;			//Itt valtozik binarissa a kep
+	img_find_binary = ~img_find_binary;				//negállom a képet
+	
+/********************************************************************************************************************************/
+/*************************************** Hough Lines ****************************************************************************/
+	Mat dst,cdst;
+	Canny(img, dst, 50, 200, 3);		//Detect the edges of the image by using a Canny detector
+	imshow( "dst", dst );	
+	cvtColor(dst, cdst, CV_GRAY2BGR);	//Transform image into graysacele
+//	imshow( "cdst", cdst );	
+
+#define HOUGH_P
+#ifdef HOUGH
+	vector<Vec2f> lines;
+	HoughLines(dst, lines, 1, CV_PI/180, 100, 0, 0 );
+	for( size_t i = 0; i < lines.size(); i++ )
+		{
+		float rho = lines[i][0], theta = lines[i][1];
+		Point pt1, pt2;
+		double a = cos(theta), b = sin(theta);
+		double x0 = a*rho, y0 = b*rho;
+		pt1.x = cvRound(x0 + 1000*(-b));
+		pt1.y = cvRound(y0 + 1000*(a));
+		pt2.x = cvRound(x0 - 1000*(-b));
+		pt2.y = cvRound(y0 - 1000*(a));
+		line( cdst, pt1, pt2, Scalar(0,0,255), 2, CV_AA);
+		}
+#endif
+#ifdef HOUGH_P				//HOUGH_P ben kartezian koordinatarendszer van, HOUGH ban pedig polár utannanézni lehet ezért nem mukoditt ez
+	vector<Vec4i> lines;
+	HoughLinesP(dst, lines, 1, CV_PI/180, 40, 20, 10 );
+	for( size_t i = 0; i < lines.size(); i++ )
+		{
+		Vec4i l = lines[i];
+		if(l[0]<500 && l[2]<500){		
+			//line( cdst, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(0,0,255), 2, CV_AA);
+			char str[5];
+			sprintf(str,"%d", i);
+			putText(cdst,str, Point((l[0]+l[2])/2, (l[1]+l[3])/2), FONT_HERSHEY_PLAIN, 1.0, CV_RGB(0,255,0), 2.0);		
+			//printf("x:%d y:%d     x:%d y:%d\n", l[0], l[1],l[2],l[3]);
+			}
+		}
+#endif
+/*********************************************************************************************************************************/
+/************************************** Convex Hull ******************************************************************************/
+
+
+
+
+/*********************************************************************************************************************************/
+/************************************** Match Template ***************************************************************************
+	Mat matchTemplate_output_binary,img_find_match_template_binary;
+	Mat matchTemplate_output,img_orginal_match_template,img_find_match_template;
+	
+	int result_cols =  img_orginal.cols - img_find.cols + 1;
+	int result_rows = img_orginal.rows - img_find.rows + 1;
+	cvtColor(img_orginal,img_orginal_match_template,CV_32FC1);
+	cvtColor(img_find,img_find_match_template,CV_32FC1);
+	matchTemplate_output.create( result_rows, result_cols, CV_32FC1 );
+
+	matchTemplate(img_binary,img_find_binary,matchTemplate_output_binary,3);
+	matchTemplate(img_orginal_match_template,img_find_match_template,matchTemplate_output,3);
+/********************************************************************************************************************************/
+/************************************** Convex hull and defect algorithms *******************************************************/
+Mat src_gray,threshold_output;
+	int thresh = 85;
+	vector<vector<Point> > contours;
+
+   	cvtColor( img, src_gray, CV_BGR2GRAY );
+   	blur( src_gray, src_gray, Size(3,3) );
+	threshold( src_gray, threshold_output, thresh, 255, THRESH_BINARY );	/// Detect edges using Threshold
+	imshow( "threshold_output", threshold_output );	
+	vector<Vec4i> hierarchy;
+	findContours( threshold_output, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0) );
+	vector<vector<Point> >hull( contours.size() );
+	vector<vector<int> >hull_int( contours.size() );
+	std::vector< std::vector<Vec4i> > defects( contours.size() );
+	for( int i = 0; i < contours.size(); i++ )	{  
+		convexHull( Mat(contours[i]), hull[i], false );
+		convexHull( Mat(contours[i]), hull_int[i], false );
+		if (contours[i].size() >3 )
+		        {
+			convexityDefects(contours[i], hull_int[i], defects[i]);
+	        }
+	}
+
+	Mat drawing = Mat::zeros( threshold_output.size(), CV_8UC3 );
+	Mat drawing1 = Mat::zeros( threshold_output.size(), CV_8UC3 );
+	for( int i = 0; i< contours.size(); i++ ){
+		drawContours( drawing, contours, i, Scalar(0,0,255), 1, 8, vector<Vec4i>(), 0, Point() );
+		drawContours( drawing, hull, i, Scalar(0,255,0), 1, 8, vector<Vec4i>(), 0, Point() );
+	}
+/************************************** Detect algorithm ************************************************************************/
+	for( int i = 0; i< contours.size(); i++ ){								//Rajzolás
+		size_t count = contours[i].size();
+		if( count <50 )	{printf("*\n"); continue;}
+		vector<Vec4i>::iterator d=defects[i].begin();
+		int j=0;
+		int parallel=0,perpendicular1=0,perpendicular2=0,cross_lenght[8];
+		Point point_candidate[4];
+		while( d!=defects[i].end() ) {
+			Vec4i& v=(*d);
+			int startidx=v[0]; Point ptStart( contours[i][startidx] );
+			int endidx=v[1]; Point ptEnd( contours[i][endidx] );
+			int faridx=v[2]; Point ptFar( contours[i][faridx] );
+			float depth = v[3] / 256;
+			d++;
+
+			line( drawing1, ptStart, ptEnd, Scalar(0,255,0), 1 );	//zöld
+			line( drawing1, ptStart, ptFar, Scalar(255,255,0), 1 );	//sárga
+			line( drawing1, ptEnd, ptFar, Scalar(0,255,255), 1 );	//kék
+			circle( drawing1, ptFar, 4, Scalar(0,255,0), 1 );
+			circle( drawing1, ptStart, 4, Scalar(255,0,0), 1 );
+			circle( drawing1, ptEnd, 4, Scalar(0,0,255), 1 );
+			char str[5];
+			sprintf(str,"%d", j++);
+			putText(drawing1,str, Point(((ptStart.x+ptFar.x)/2),((ptStart.y+ptFar.y)/2)), FONT_HERSHEY_PLAIN, 1.0,CV_RGB(255,255,0), 1.0);
+			putText(drawing1,str, Point(((ptEnd.x+ptFar.x)/2),((ptEnd.y+ptFar.y)/2)), FONT_HERSHEY_PLAIN, 1.0, CV_RGB(255,255,0), 1.0);
+			putText(drawing1,str, Point(ptFar.x+5,ptFar.y+5), FONT_HERSHEY_PLAIN, 1.0, CV_RGB(255,255,0), 1.0);
+			
+			vector<Vec4i>::iterator dd=defects[i].begin();			
+			int lenght=norm(ptFar-ptStart);
+			float Angle1, Angle2;
+			Angle1 = atan2(ptFar.y - ptStart.y, ptFar.x - ptStart.x) * 180.0 / CV_PI;
+			Angle2 = atan2(ptFar.y - ptEnd.y, ptFar.x - ptEnd.x) * 180.0 / CV_PI;
+			if(lenght<LINE_MIN_LENGHT)	{printf("SHORT, line_lenght: %d\n", lenght); continue;}
+			if((abs(abs(Angle1)-abs(Angle2))-90)<LINE_MAX_ANGLE) {
+				point_candidate[perpendicular1]=ptFar;
+				cross_lenght[2*perpendicular1]=norm(ptFar-ptStart);
+				cross_lenght[2*perpendicular1+1]=norm(ptEnd-ptFar);
+				perpendicular1++;
+				if(perpendicular1>4)	{printf("TOO MUCH perpendicular>4");	continue;}
+			}
+			
+			printf("Angle1: %.2f	Angle2: %.2f	", Angle1,Angle2);
+			printf("Angle12: %.2f	Lenght: %d	",(float)(abs(abs(Angle1)-abs(Angle2))-90),lenght);
+			printf("parallel lines: %d	Perpendicular lines: %d\n",parallel,perpendicular1);
+		}	
+		printf("------- i: %d Parallel lines: %d		Perpendicular lines: %d ----------------------\n", i,parallel,perpendicular1);
+		printf("\ncros.x:\n");
+		for(int i=0;i<4;i++) printf("%d		cross_lenght: %d\n",point_candidate[i].x,cross_lenght[2*i]);
+		printf("cros.y:\n");
+		for(int i=0;i<4;i++) printf("%d		cross_lenght: %d\n",point_candidate[i].y,cross_lenght[2*i+1]);
+
+		if(perpendicular1 == 4){
+			float Angle[8];
+			Angle[0] = atan2(point_candidate[0].y - point_candidate[1].y, point_candidate[0].x - point_candidate[1].x) * 180.0 / CV_PI;
+			Angle[1] = atan2(point_candidate[1].y - point_candidate[2].y, point_candidate[1].x - point_candidate[2].x) * 180.0 / CV_PI;
+
+			Angle[2] = atan2(point_candidate[1].y - point_candidate[2].y, point_candidate[1].x - point_candidate[2].x) * 180.0 / CV_PI;
+			Angle[3] = atan2(point_candidate[2].y - point_candidate[3].y, point_candidate[2].x - point_candidate[3].x) * 180.0 / CV_PI;
+				
+			Angle[4] = atan2(point_candidate[2].y - point_candidate[3].y, point_candidate[2].x - point_candidate[3].x) * 180.0 / CV_PI;
+			Angle[5] = atan2(point_candidate[3].y - point_candidate[0].y, point_candidate[3].x - point_candidate[0].x) * 180.0 / CV_PI;
+
+			Angle[6] = atan2(point_candidate[3].y - point_candidate[0].y, point_candidate[3].x - point_candidate[0].x) * 180.0 / CV_PI;
+			Angle[7] = atan2(point_candidate[0].y - point_candidate[1].y, point_candidate[0].x - point_candidate[1].x) * 180.0 / CV_PI;
+				
+			for(int i=0;i<4;i++)	if((abs(abs(Angle[2*i])-abs(Angle[2*i+1]))-90)<LINE_MAX_ANGLE) {perpendicular2++;}
+				
+				
+			for(int i=0;i<4;i++)	printf("Angle1: %.2f	Angel2: %.2f	Anlge12: %.2f	perpendicular2: %d\n", Angle[2*i],Angle[2*i+1],(float)(abs(abs(Angle[2*i])-abs(Angle[2*i+1]))),perpendicular2);
+				
+			if(perpendicular2 == 4){
+				Point cross;				
+				cross.x=(point_candidate[0].x+point_candidate[1].x+point_candidate[2].x+point_candidate[3].x)/4;
+				cross.y=(point_candidate[0].y+point_candidate[1].y+point_candidate[2].y+point_candidate[3].y)/4;
+				circle( drawing1, cross, 2, Scalar(0,0,255), 5 );
+				circle( img, cross, 2, Scalar(255,0,0), 5 );
+			}
+		}
+	}
+	imshow( "Hull demo", drawing );
+	imshow( "Hull demo1", drawing1 );
+/**************************************************************************	******************************************************/
+/************************************** Detect algorithm ************************************************************************/
+	//Ez a rész összehasonlítja az egyes vonalak távolságát egymással. Ha meszebb vannak mint LINE_DISTANCE pixelekben nem foglalkozom tovább velük	
+	float Angle1, Angle2;
+	for(size_t i = 0; i < lines.size(); i++){
+		Vec4i l = lines[i];
+		Angle1 = atan2(l[3] - l[1], l[2] - l[0]) * 180.0 / CV_PI;
+		for(size_t j = i; j < lines.size(); j++){
+			if(i!=j){			
+				Vec4i ll = lines[j];			
+				Angle2 = atan2(ll[3] - ll[1], ll[2] - ll[0]) * 180.0 / CV_PI;
+				if(abs(Angle1-Angle2)<LINE_MAX_ANGLE){
+					int line_distance=pow(pow(abs((ll[0] + ll[2])/2-(l[0] + l[2])/2),2) + pow(abs((ll[1] + ll[3])/2-(l[1] + l[3])/2),2),0.5);
+					if(LINE_MAX_DISTANCE>line_distance && line_distance>LINE_MIN_DISTANCE){
+					/*	printf(" i:%d	x1:%d	y1:%d	x2:%d	y2:%d	(x1+x2)/2:%d	(y1+y2)/2:%d	|	j:%d	x1:%d	y1:%d	x2:%d	y2:%d	(x1+x2)/2:%d	(y1+y2)/2:%d	|	a:%d	b:%d	r:%d	Angle_i:%f	Angle_j:%f",	
+						i,l[0],l[1],l[2],l[3],(l[0]+l[2])/2,(l[1] + l[3])/2,j,ll[0],ll[1],ll[2],ll[3],(ll[0] + ll[2])/2,(ll[1] + ll[3])/2,abs((ll[0] + ll[2])/2-(l[0]+l[2])/2),
+						abs((ll[1] + ll[3])/2-(l[1] + l[3])/2),(int)pow(pow(abs((ll[0] + ll[2])/2-(l[0]+l[2])/2),2) + pow(abs((ll[1] + ll[3])/2-(l[1] + l[3])/2),2),0.5),Angle1,Angle2);
+						printf("\n");*/
+						//Kiírom a Hough algoritmus által detektált vonal i számát, egyik pontjának az x1,y1 majd a másik pontjának x2,y2 koordinátáját, közepének az x,y koordinátáit, 
+						//majd ugyanezt a j számú vonalra amivel hasonlítom össze.
+						//Végül a két vonál közepének a(x - tengelyen) és b(y - tengelyen) vett távolságát majd a relatív távolságukat r=gyōk(a²+b²)
+
+				
+						line( cdst, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(0,0,255), 1, CV_AA);	
+					}
+				}
+			}
+		}
+		//printf("------------------------------------\n");
+	}
+
+
+
+
+/********************************************************************************************************************************/
+	char c=cvWaitKey(10);
+	
+//	imshow( "Orignal_image", img_orginal );
+	imshow( "Undistorted_image", img );
+	imshow( "cdst", cdst );
+//	imshow( "img_find", img_find );
+//	imshow( "matchTemplate", matchTemplate_output );
+//	imshow( "matchTemplate_binary", matchTemplate_output_binary );
+	
+	if(c== 'a')	{char filename[25]; snprintf(filename,24,"webcam_capture_%d.jpg",save_sequence); printf("image saved"); imwrite(filename, img_orginal); save_sequence++;}
+	//press 'a' button for save picture
+}
+
+/********************************************************************************SURF********************************************/
+	while(1){Mat imgOriginal;bool bSuccess = cap.read(imgOriginal);
+//	Mat imgOriginal = img;
+
+
 	cv::cvtColor(imgOriginal, imgOriginal, cv::COLOR_BGR2GRAY);
 
 	if (!bSuccess) //if not success, break loop
