@@ -27,10 +27,13 @@
 #define LINE_MIN_DISTANCE					10					//In pixels
 #define	LINE_MAX_ANGLE						10					//In degrees
 #define LINE_MIN_LENGHT						20					//In pixels
-#define LINE_LENGHT_VARIANCE_PERCENT		20					//In percent
+#define MIN_DEFECTS_SIZE					4					//see defects_size.png
+#define MAX_DEFECTS_SIZE					15					//see defects_size.png
+#define LINE_LENGHT_VARIANCE_PERCENT				20					//In percent
+#define MIN_CONTOURS_LENGHT					50					//In pixels nem biztos
 #define LINE_LENGHT_VARIANCE			LINE_LENGHT_VARIANCE_PERCENT/100
 #define	IMSHOW													//Show captured pictures
-/****************************************************************************************************************************************/
+/*****************************************************************************************************************************************/
 
 using namespace cv;
 
@@ -50,69 +53,53 @@ int main( int argc, char** argv )
 		img = imread("/home/norbi/Asztal/object_recognition_c++/build/saved images/webcam_capture_2.jpg", CV_LOAD_IMAGE_COLOR);   // Read the file, comment if use camera
 		Mat img_orginal=img;
 		undistortion_code(&img);	//Undistortion
-/************************************** Convex hull and defect algorithms *******************************************************/
+/************************************** Convex hull and Convex defect algorithms *******************************************************/
 //adaptive treshold, erode, dilate,
 		Mat src_gray,threshold_output;
-		int thresh = 85;
 		vector<vector<Point> > contours;
 
 	   	cvtColor( img, src_gray, CV_BGR2GRAY );
 	   	blur( src_gray, src_gray, Size(3,3) );
+		int thresh = 85;		
 		threshold( src_gray, threshold_output, thresh, 255, THRESH_BINARY );	/// Detect edges using Threshold
-		imshow( "threshold_output", threshold_output );	
+		imshow("threshold_output", threshold_output );	
 		vector<Vec4i> hierarchy;
 		findContours( threshold_output, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0) );
-		vector<vector<Point> >hull( contours.size() );
 		vector<vector<int> >hull_int( contours.size() );
 		std::vector< std::vector<Vec4i> > defects( contours.size() );
 		for( int i = 0; i < contours.size(); i++ )	{  
-			convexHull( Mat(contours[i]), hull[i], false );
 			convexHull( Mat(contours[i]), hull_int[i], false );
-			if (contours[i].size() >3 )
-				{
-				convexityDefects(contours[i], hull_int[i], defects[i]);
-			}
+			if (contours[i].size() >3 )		convexityDefects(contours[i], hull_int[i], defects[i]);
 		}
+/************************************** Drawing ************************************************************************/		
+		vector<vector<Point> >hull( contours.size() );
+		for( int i = 0; i < contours.size(); i++ )	convexHull( Mat(contours[i]), hull[i], false );
 		Mat drawing = Mat::zeros( threshold_output.size(), CV_8UC3 );
 		Mat drawing1 = Mat::zeros( threshold_output.size(), CV_8UC3 );
 		for( int i = 0; i< contours.size(); i++ ){
-			drawContours( drawing, contours, i, Scalar(0,0,255), 1, 8, vector<Vec4i>(), 0, Point() );		//piros
-			drawContours( drawing, hull, i, Scalar(0,255,0), 1, 8, vector<Vec4i>(), 0, Point() );			//zöld
+			drawContours( drawing, contours, i, Scalar(0,0,255), 1, 8, vector<Vec4i>(), 0, Point() );		//piros berajzolja a counturs-t
+			drawContours( drawing, hull, i, Scalar(0,255,0), 1, 8, vector<Vec4i>(), 0, Point() );			//zöld	berajzolja a hull-t
 		}
 /************************************** Detect algorithm ************************************************************************/
-		for( int i = 0; i< contours.size(); i++ ){								//Rajzolás
-			size_t count = contours[i].size();
-			if( count <50 )	{printf("*\n"); continue;}
-			vector<Vec4i>::iterator d=defects[i].begin();
-			int j=0;
-			int parallel=0,perpendicular1=0,perpendicular2=0,test=0,cross_lenght[8];
+		printf("--------------------------------------------------contours.size(): %d --------------------------------------------------\n", contours.size());	
+		for( int i = 0; i < contours.size(); i++ ){
+			printf("contour[i].size: %d",contours[i].size());
+			if (defects[i].size() < MIN_DEFECTS_SIZE || defects[i].size() > MAX_DEFECTS_SIZE ) { printf("*\n");	continue; }	//defects.size() korlátozás
+			printf("\n");														//Ideális keresztnél 4 darab van
+			int perpendicular1=0,perpendicular2=0,test=0,cross_lenght[8],j=0;;
 			Point point_candidate[4];
-			while( d!=defects[i].end() ) {
-				Vec4i& v=(*d);
-				int startidx=v[0]; Point ptStart( contours[i][startidx] );
-				int endidx=v[1]; Point ptEnd( contours[i][endidx] );
-				int faridx=v[2]; Point ptFar( contours[i][faridx] );
-				float depth = v[3] / 256;
-				d++;
 
-				line( drawing1, ptStart, ptEnd, Scalar(0,255,0), 1 );	//zöld
-				line( drawing1, ptStart, ptFar, Scalar(255,255,0), 1 );	//sárga
-				line( drawing1, ptEnd, ptFar, Scalar(0,255,255), 1 );	//kék
-				circle( drawing1, ptFar, 4, Scalar(0,255,0), 1 );
-				circle( drawing1, ptStart, 4, Scalar(255,0,0), 1 );
-				circle( drawing1, ptEnd, 4, Scalar(0,0,255), 1 );
-				char str[5];
-				sprintf(str,"%d", j++);
-				putText(drawing1,str, Point(((ptStart.x+ptFar.x)/2),((ptStart.y+ptFar.y)/2)), FONT_HERSHEY_PLAIN, 1.0,CV_RGB(255,255,0), 1.0);
-				putText(drawing1,str, Point(((ptEnd.x+ptFar.x)/2),((ptEnd.y+ptFar.y)/2)), FONT_HERSHEY_PLAIN, 1.0, CV_RGB(255,255,0), 1.0);
-				putText(drawing1,str, Point(ptFar.x+5,ptFar.y+5), FONT_HERSHEY_PLAIN, 1.0, CV_RGB(255,255,0), 1.0);
+			vector<Vec4i>::iterator d=defects[i].begin();	//d-t megnézni mit fejez ki
+			for(int j = 0; j<defects[i].size(); j++)  {
+				Point ptStart( contours[i][defects[i][j][0]] );
+				Point ptEnd( contours[i][defects[i][j][1]] );
+				Point ptFar( contours[i][defects[i][j][2]] );
+				printf( "depth:%d   ",defects[i][j][3]);
 			
-				vector<Vec4i>::iterator dd=defects[i].begin();			
-				int lenght=norm(ptFar-ptStart);
 				float Angle1, Angle2;
 				Angle1 = atan2(ptFar.y - ptStart.y, ptFar.x - ptStart.x) * 180.0 / CV_PI;
 				Angle2 = atan2(ptFar.y - ptEnd.y, ptFar.x - ptEnd.x) * 180.0 / CV_PI;
-				if(lenght<LINE_MIN_LENGHT)	{printf("SHORT, line_lenght: %d\n", lenght); continue;}
+				if(norm(ptFar-ptStart) < LINE_MIN_LENGHT)	{printf("SHORT, line_lenght: %d\n", norm(ptFar-ptStart)); continue;}
 				if((abs(abs(Angle1)-abs(Angle2))-90)<LINE_MAX_ANGLE) {
 					point_candidate[perpendicular1]=ptFar;
 					cross_lenght[2*perpendicular1]=norm(ptFar-ptStart);
@@ -122,10 +109,10 @@ int main( int argc, char** argv )
 				}
 			
 				printf("Angle1: %.2f	Angle2: %.2f	", Angle1,Angle2);
-				printf("Angle12: %.2f	Lenght: %d	",(float)(abs(abs(Angle1)-abs(Angle2))-90),lenght);
-				printf("parallel lines: %d	Perpendicular lines: %d\n",parallel,perpendicular1);
+				printf("Angle12: %.2f	Lenght: %d	",(float)(abs(abs(Angle1)-abs(Angle2))-90),norm(ptFar-ptStart));
+				printf("Perpendicular lines: %d\n",perpendicular1);
 			}	
-			printf("------- i: %d Parallel lines: %d		Perpendicular lines: %d ----------------------\n", i,parallel,perpendicular1);
+			printf("------- i:%d	Perpendicular lines: %d ----------------------\n", i,perpendicular1);
 			printf("\ncros.x:\n");
 			for(int i=0;i<4;i++) printf("%d		cross_lenght: %d\n",point_candidate[i].x,cross_lenght[2*i]);
 			printf("cros.y:\n");
@@ -172,6 +159,25 @@ int main( int argc, char** argv )
 					}
 				}
 			}
+			for(int j = 0; j<defects[i].size(); j++)  {
+				Point ptStart( contours[i][defects[i][j][0]] );
+				Point ptEnd( contours[i][defects[i][j][1]] );
+				Point ptFar( contours[i][defects[i][j][2]] );
+				printf( "depth:%d   ",defects[i][j][3]);
+
+				line( drawing1, ptStart, ptEnd, Scalar(0,255,0), 1 );	//zöld
+				line( drawing1, ptStart, ptFar, Scalar(255,255,0), 1 );	//sárga
+				line( drawing1, ptEnd, ptFar, Scalar(0,255,255), 1 );	//kék
+				circle( drawing1, ptFar, 4, Scalar(0,255,0), 1 );
+				circle( drawing1, ptStart, 4, Scalar(255,0,0), 1 );
+				circle( drawing1, ptEnd, 4, Scalar(0,0,255), 1 );
+				char str[5];
+				sprintf(str,"%d", j);
+				printf("j: %d", j);
+				putText(drawing1,str, Point(((ptStart.x+ptFar.x)/2),((ptStart.y+ptFar.y)/2)), FONT_HERSHEY_PLAIN, 1.0,CV_RGB(255,255,0), 1.0);
+				putText(drawing1,str, Point(((ptEnd.x+ptFar.x)/2),((ptEnd.y+ptFar.y)/2)), FONT_HERSHEY_PLAIN, 1.0, CV_RGB(255,255,0), 1.0);
+				putText(drawing1,str, Point(ptFar.x+5,ptFar.y+5), FONT_HERSHEY_PLAIN, 1.0, CV_RGB(255,255,0), 1.0);
+			}
 		}
 /********************************************************************************************************************************/	
 #ifdef	IMSHOW
@@ -197,30 +203,30 @@ int main( int argc, char** argv )
 /*	#define	distortion_path	"/home/norbi/Asztal/object_recognition_c++/mobius_calibration_data/get_caloutput_20160413-2__distortion.xml"/*
 /*
 **********************************************************************************************************************************/
-void undistortion_code(cv::Mat *img){
+void undistortion_code(cv::Mat *img) {
 
 	CvMat *intrinsic, *distortion;
-	IplImage *inputImg, *outputImg;
-	IplImage temp=*img;		//convert Mat to IplImage	
-	inputImg = &temp;
-	outputImg = cvCreateImage( cvGetSize( inputImg ), inputImg->depth, 3 );
-	intrinsic = (CvMat*)cvLoad( intrinsic_path );
-	distortion = (CvMat*)cvLoad( distortion_path );
+	IplImage  *outputImg;
+	IplImage inputImg = *img;		//convert Mat to IplImage	
+									//	inputImg = &temp;
+	outputImg = cvCreateImage(cvGetSize(&inputImg), inputImg.depth, 3);
+	intrinsic = (CvMat*)cvLoad(intrinsic_path);
+	distortion = (CvMat*)cvLoad(distortion_path);
 
 #ifdef	crop_on
-	cvUndistort2( inputImg, outputImg, intrinsic, distortion );
-	*img=outputImg;
+	cvUndistort2(&inputImg, outputImg, intrinsic, distortion);
+	*img = cvarrToMat(outputImg);
 #endif
 #ifdef	crop_off
-	double alpha=1;
-	CvMat *cameraMatrix = cvCreateMat( 3, 3, CV_32FC1 );
-	IplImage *mapx = cvCreateImage( cvGetSize( inputImg ), IPL_DEPTH_32F, 1 );
-	IplImage *mapy = cvCreateImage( cvGetSize( inputImg ), IPL_DEPTH_32F, 1 );
-	cvGetOptimalNewCameraMatrix(intrinsic,distortion,cvGetSize( inputImg ),alpha,cameraMatrix,cvGetSize( inputImg ));
-	cvInitUndistortRectifyMap(intrinsic,distortion,NULL,cameraMatrix,mapx,mapy);
-	cvRemap( inputImg, outputImg, mapx, mapy );
+	double alpha = 1;
+	CvMat *cameraMatrix = cvCreateMat(3, 3, CV_32FC1);
+	IplImage *mapx = cvCreateImage(cvGetSize(inputImg), IPL_DEPTH_32F, 1);
+	IplImage *mapy = cvCreateImage(cvGetSize(inputImg), IPL_DEPTH_32F, 1);
+	cvGetOptimalNewCameraMatrix(intrinsic, distortion, cvGetSize(inputImg), alpha, cameraMatrix, cvGetSize(inputImg));
+	cvInitUndistortRectifyMap(intrinsic, distortion, NULL, cameraMatrix, mapx, mapy);
+	cvRemap(inputImg, outputImg, mapx, mapy);
 #endif
-	*img=outputImg;
+	*img = cvarrToMat(outputImg);
 }
 
 /**********Opencv sedédlet példák stb..****************/

@@ -1,0 +1,4 @@
+how to make main.cpp?
+
+cd build
+make

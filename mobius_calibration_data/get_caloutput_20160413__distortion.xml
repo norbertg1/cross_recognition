@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<opencv_storage>
+<get_caloutput_20160413__distortion type_id="opencv-matrix">
+  <rows>5</rows>
+  <cols>1</cols>
+  <dt>f</dt>
+  <data>
+    -4.70928907e-01 3.47222853e-03 9.88359973e-02 -2.06910516e-03
+    7.02932328e-02</data></get_caloutput_20160413__distortion>
+</opencv_storage>

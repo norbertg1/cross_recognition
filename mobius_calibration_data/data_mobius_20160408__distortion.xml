@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<opencv_storage>
+<data_mobius_20160408__distortion type_id="opencv-matrix">
+  <rows>5</rows>
+  <cols>1</cols>
+  <dt>f</dt>
+  <data>
+    -4.94433522e-01 3.89285803e-01 7.21211806e-02 2.24971981e-03
+    -4.26237434e-01</data></data_mobius_20160408__distortion>
+</opencv_storage>
