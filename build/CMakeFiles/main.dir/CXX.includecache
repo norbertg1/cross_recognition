@@ -17,16 +17,10 @@ string
 -
 vector
 -
-unistd.h
--
 opencv/cv.h
 /home/norbi/Asztal/object_recognition_c++/opencv/cv.h
 opencv2/core/core.hpp
 /home/norbi/Asztal/object_recognition_c++/opencv2/core/core.hpp
-opencv2/xfeatures2d.hpp
-/home/norbi/Asztal/object_recognition_c++/opencv2/xfeatures2d.hpp
-opencv2/features2d/features2d.hpp
-/home/norbi/Asztal/object_recognition_c++/opencv2/features2d/features2d.hpp
 opencv2/highgui/highgui.hpp
 /home/norbi/Asztal/object_recognition_c++/opencv2/highgui/highgui.hpp
 opencv2/calib3d/calib3d.hpp
