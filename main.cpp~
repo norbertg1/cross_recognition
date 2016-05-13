@@ -202,7 +202,7 @@ void erode_dilate(Mat &img,int dilation_size, int dilation_type, int iteration_d
 /******************************************************************************************************************************************************/
 
 void ColorFilter(Mat &img){
-	uint8_t dilation_size=7,dilation_type=1;
+	uint8_t dilation_size=7,dilation_type=0;
 	Mat imgHSV,imgThresholded,imgThresholded1,img_masked;
 	img_masked = Mat::zeros( img.size(), img.type() );
 	cvtColor(img, imgHSV, COLOR_BGR2HSV);
