@@ -159,6 +159,9 @@ CMAKE_STATIC_LINKER_FLAGS_RELWITHDEBINFO:STRING=
 //Path to a program.
 CMAKE_STRIP:FILEPATH=/usr/bin/strip
 
+//No help, variable specified on the command line.
+CMAKE_TOOLCHAIN_FILE:UNINITIALIZED=/home/norbi/Asztal/opencv-2.4.12/platforms/linux/arm-gnueabihf.toolchain.cmake
+
 //If true, cmake will use relative paths in makefiles and projects.
 CMAKE_USE_RELATIVE_PATHS:BOOL=OFF
 
@@ -184,6 +187,9 @@ OpenCV_LIB_DIR_DBG:PATH=
 
 //Path where release OpenCV libraries are located
 OpenCV_LIB_DIR_OPT:PATH=
+
+//No help, variable specified on the command line.
+SOFTFP:UNINITIALIZED=ON
 
 //Value Computed by CMake
 main_BINARY_DIR:STATIC=/home/norbi/Asztal/object_recognition_c++/build

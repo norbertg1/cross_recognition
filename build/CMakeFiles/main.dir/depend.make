@@ -30,7 +30,6 @@ CMakeFiles/main.dir/main.cpp.o: /usr/local/include/opencv2/core/types_c.h
 CMakeFiles/main.dir/main.cpp.o: /usr/local/include/opencv2/core/utility.hpp
 CMakeFiles/main.dir/main.cpp.o: /usr/local/include/opencv2/core/version.hpp
 CMakeFiles/main.dir/main.cpp.o: /usr/local/include/opencv2/features2d.hpp
-CMakeFiles/main.dir/main.cpp.o: /usr/local/include/opencv2/features2d/features2d.hpp
 CMakeFiles/main.dir/main.cpp.o: /usr/local/include/opencv2/flann/config.h
 CMakeFiles/main.dir/main.cpp.o: /usr/local/include/opencv2/flann/defines.h
 CMakeFiles/main.dir/main.cpp.o: /usr/local/include/opencv2/flann/miniflann.hpp
@@ -46,8 +45,6 @@ CMakeFiles/main.dir/main.cpp.o: /usr/local/include/opencv2/imgproc/imgproc.hpp
 CMakeFiles/main.dir/main.cpp.o: /usr/local/include/opencv2/imgproc/imgproc_c.h
 CMakeFiles/main.dir/main.cpp.o: /usr/local/include/opencv2/imgproc/types_c.h
 CMakeFiles/main.dir/main.cpp.o: /usr/local/include/opencv2/ml.hpp
-CMakeFiles/main.dir/main.cpp.o: /usr/local/include/opencv2/nonfree/features2d.hpp
-CMakeFiles/main.dir/main.cpp.o: /usr/local/include/opencv2/nonfree/nonfree.hpp
 CMakeFiles/main.dir/main.cpp.o: /usr/local/include/opencv2/objdetect.hpp
 CMakeFiles/main.dir/main.cpp.o: /usr/local/include/opencv2/objdetect/detection_based_tracker.hpp
 CMakeFiles/main.dir/main.cpp.o: /usr/local/include/opencv2/objdetect/objdetect_c.h
